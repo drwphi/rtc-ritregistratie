@@ -1,0 +1,94 @@
+/* Custom Form Styles */
+
+#rit-registratie {
+    font-family: Arial, sans-serif;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f8f8f8;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#rit-registratie div {
+    margin-bottom: 15px;
+}
+
+#rit-registratie label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+#rit-registratie input[type="text"],
+#rit-registratie input[type="number"],
+#rit-registratie input[type="date"],
+#rit-registratie select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+    min-height: 40px;
+}
+
+#rit-registratie input[type="submit"] {
+    background-color: #007bff;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#rit-registratie input[type="submit"]:hover {
+    background-color: #0056b3;
+}
+
+#rit-registratie .duration-fields {
+    display: flex;
+    gap: 10px;
+}
+
+#rit-registratie .duration-fields div {
+    flex: 1;
+}
+
+/* Custom Styles for User Registrations Table */
+
+.rtc-user-registrations {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    border-collapse: collapse;
+}
+
+.rtc-user-registrations th,
+.rtc-user-registrations td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+.rtc-user-registrations th {
+    background-color: #f5f5f5;
+    font-weight: bold;
+}
+
+.rtc-user-registrations tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.table-responsive {
+    overflow-x: auto;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media screen and (max-width: 767px) {
+    .rtc-user-registrations {
+        width: auto; /* Allows table to be wider than screen */
+        margin-right: 10px;
+    }
+}
