@@ -15,7 +15,6 @@ function rtc_ritregistratie_admin_menu() {
     );
 }
 
-
 add_action('admin_menu', 'rtc_ritregistratie_admin_menu');
 
 function rtc_ritregistratie_admin_page() {
@@ -26,7 +25,6 @@ function rtc_ritregistratie_admin_page() {
     if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['entry_id']) && isset($_GET['nonce'])) {
         $entry_id = intval($_GET['entry_id']);
         $nonce = sanitize_text_field($_GET['nonce']);
-
         if (wp_verify_nonce($nonce, 'delete_ride_' . $entry_id)) {
             $wpdb->delete($table_name, ['id' => $entry_id]);
         }
@@ -49,6 +47,7 @@ function rtc_ritregistratie_admin_page() {
         [$year, $month] = explode('-', $month_year_filter);
         $sql .= $wpdb->prepare(" WHERE YEAR(ride_date) = %d AND MONTH(ride_date) = %d", $year, $month);
     }
+    $sql .= " ORDER BY ride_date ASC"; // Add this line to sort by date ascending
     $sql .= " LIMIT ${offset}, ${per_page}";
     $registrations = $wpdb->get_results($sql);
 
@@ -78,7 +77,6 @@ function rtc_ritregistratie_admin_page() {
     echo '<table class="wp-list-table widefat fixed striped">';
     echo '<thead><tr><th>Lid</th><th>Datum</th><th>Type</th><th>Omschrijving</th><th>Kilometers</th><th>Duur</th><th>Verwijderen</th></tr></thead>';
     echo '<tbody>';
-
     foreach ($registrations as $registration) {
         $user_info = get_userdata($registration->user_id);
         $user_name = $user_info ? $user_info->first_name . ' ' . $user_info->last_name : 'Unknown User';
@@ -105,26 +103,38 @@ function rtc_ritregistratie_admin_page() {
             $delete_link
         );
     }
-
+    
     echo '</tbody></table>';
 
-    // Pagination display
-    $total_pages = ceil($total / $per_page);
-    if ($total_pages > 1) {
-        $page_links = paginate_links(array(
-            'base' => add_query_arg('paged', '%#%'),
-            'format' => '',
-            'prev_text' => __('&laquo;'),
-            'next_text' => __('&raquo;'),
-            'total' => $total_pages,
-            'current' => $current_page
-        ));
-        echo '<div id="pagination" style="margin-top: 10px;">' . $page_links . '</div>';
+    // Pagination logic
+    $per_page = 100;
+    $current_page = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
+    $offset = ($current_page - 1) * $per_page;
+
+    // SQL to fetch data with filters
+    $sql = "SELECT * FROM $table_name";
+    if (!empty($month_year_filter)) {
+        [$year, $month] = explode('-', $month_year_filter);
+        $sql .= $wpdb->prepare(" WHERE YEAR(ride_date) = %d AND MONTH(ride_date) = %d", $year, $month);
     }
+    $sql .= " LIMIT ${offset}, ${per_page}";
+    $registrations = $wpdb->get_results($sql);
+
+    // Total count for pagination
+    $total_query = "SELECT COUNT(1) FROM $table_name";
+    if (!empty($month_year_filter)) {
+        $total_query .= $wpdb->prepare(" WHERE YEAR(ride_date) = %d AND MONTH(ride_date) = %d", $year, $month);
+    }
+    $total = $wpdb->get_var($total_query);
+
+
 
     // Download CSV button
     echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
     echo '<input type="hidden" name="action" value="download_csv">';
+    if (!empty($month_year_filter)) {
+        echo '<input type="hidden" name="month_year_filter" value="' . esc_attr($month_year_filter) . '">';
+    }
     echo '<input type="submit" value="Download CSV">';
     echo '</form>';
     echo '</div>'; // Closing div.wrap
@@ -145,20 +155,30 @@ function rtc_ritregistratie_get_pretty_ride_type($ride_type_key) {
 function rtc_ritregistratie_download_csv() {
     global $wpdb;
     $table_name = $wpdb->prefix . 'rtc_ritregistratie';
-    $registrations = $wpdb->get_results("SELECT * FROM $table_name", ARRAY_A);
+
+    // Check for month-year filter from the request and sanitize it
+    $month_year_filter = isset($_REQUEST['month_year_filter']) ? sanitize_text_field($_REQUEST['month_year_filter']) : '';
+
+    // Start the query to select all entries
+    $sql = "SELECT * FROM $table_name";
+    if (!empty($month_year_filter)) {
+        [$year, $month] = explode('-', $month_year_filter);
+        $sql .= $wpdb->prepare(" WHERE YEAR(ride_date) = %d AND MONTH(ride_date) = %d", $year, $month);
+    }
+    $registrations = $wpdb->get_results($sql, ARRAY_A);
 
     // Check if headers already sent
     if (headers_sent()) {
         wp_die('Unable to download CSV, headers already sent');
     }
 
-    // Format the current date as YYYY-MM-DD
-    $current_date = date('Y-m-d');
-    $filename = "{$current_date}-veluwerijders-ritregistraties-leden.csv";
+    // Format the filename with the current date and a meaningful name
+    $filename_date_part = $current_date = date('Y-m-d');
+    $filename = $filename_date_part . '-veluwerijders-ritregistraties-leden.csv';
 
     // Set headers for download
     header('Content-Type: text/csv; charset=utf-8');
-    header("Content-Disposition: attachment; filename=\"{$filename}\"");
+    header("Content-Disposition: attachment; filename=\"$filename\"");
 
     $output = fopen('php://output', 'w');
 
@@ -175,13 +195,8 @@ function rtc_ritregistratie_download_csv() {
         // Fetch user data
         $user_info = get_userdata($row['user_id']);
         $user_name = $user_info ? $user_info->first_name . ' ' . $user_info->last_name : 'Unknown User';
-
-        // Insert user name into the row data
         array_splice($row, 1, 0, $user_name); // Insert 'user_name' after 'user_id'
-
-        // Format date for CSV
-        $row['ride_date'] = date('d-m-Y', strtotime($row['ride_date']));
-
+        $row['ride_date'] = date('d-m-Y', strtotime($row['ride_date'])); // Format date for CSV
         fputcsv($output, $row);
     }
 
