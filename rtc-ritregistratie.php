@@ -3,7 +3,7 @@
  * Plugin Name: RTC Ritregistratie
  * Plugin URI: https://strila.nl/wordpress-website-laten-maken-groningen/
  * Description: Ritregistratie voor leden van RTC Veluwerijders.
- * Version: 0.5
+ * Version: 0.61
  * Author: Daniel Philipsen
  * Author URI: https://strila.nl/
  */
@@ -66,19 +66,9 @@ function rtc_ritregistratie_show_user_registrations() {
         return "Je moet ingelogd zijn om ritten te kunnen registreren en zien.";
     }
 
-    // Handle delete request
-    if (isset($_GET['action']) && $_GET['action'] === 'delete' && isset($_GET['entry_id']) && isset($_GET['nonce'])) {
-        $entry_id = intval($_GET['entry_id']);
-        $nonce = sanitize_text_field($_GET['nonce']);
-
-        if (wp_verify_nonce($nonce, 'delete_ride_' . $entry_id)) {
-            $wpdb->delete($wpdb->prefix . 'rtc_ritregistratie', ['id' => $entry_id, 'user_id' => $user_id]);
-        }
-    }
-
     $table_name = $wpdb->prefix . 'rtc_ritregistratie';
     $registrations = $wpdb->get_results($wpdb->prepare(
-        "SELECT * FROM $table_name WHERE user_id = %d",
+        "SELECT * FROM $table_name WHERE user_id = %d ORDER BY ride_date ASC",
         $user_id
     ));
 
@@ -92,36 +82,39 @@ function rtc_ritregistratie_show_user_registrations() {
         'rtc-veluwerijders' => 'RTC (Veluwerijders)'
     );
 
+    // Initialize total kilometers
+    $total_kilometers = 0;
+
     $output = '<div class="table-responsive">';
-    $output .= '<table class="rtc-user-registrations"><tr><th>Datum</th><th>Type</th><th>Omschrijving</th><th>Kilometers</th><th>Duur</th><th>Acties</th></tr>';
+    $output .= '<table class="rtc-user-registrations"><tr><th>Datum</th><th>Type</th><th>Omschrijving</th><th>Kilometers</th><th>Duur</th></tr>';
+    
     foreach ($registrations as $registration) {
         $formatted_date = date('d-m-Y', strtotime($registration->ride_date));
         $ride_type_label = isset($ride_type_mapping[$registration->ride_type]) ? $ride_type_mapping[$registration->ride_type] : 'Onbekend';
         $formatted_duration = date('H:i', strtotime($registration->duration));
 
-        // Add delete link
-        $delete_nonce = wp_create_nonce('delete_ride_' . $registration->id);
-        $delete_link = esc_url(add_query_arg([
-            'action' => 'delete', 
-            'entry_id' => $registration->id, 
-            'nonce' => $delete_nonce
-        ], $_SERVER['REQUEST_URI']));
-
         $output .= sprintf(
-            '<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td><a href="%s" onclick="return confirm(\'Weet je zeker dat je deze rit wilt verwijderen?\');">Verwijderen</a></td></tr>',
+            '<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
             esc_html($formatted_date),
             esc_html($ride_type_label),
             esc_html($registration->ride_description),
             esc_html($registration->kilometers),
-            esc_html($formatted_duration),
-            $delete_link
+            esc_html($formatted_duration)
         );
+
+        // Add to total kilometers
+        $total_kilometers += floatval($registration->kilometers);
     }
+
+    // Add a row to display the total kilometers
+    $output .= "<tr><td colspan='3'>Totaal Kilometers</td><td>" . esc_html(number_format($total_kilometers, 2)) . "</td><td></td></tr>";
+    
     $output .= '</table>';
     $output .= '</div>';
 
     return $output;
 }
+
 
 add_shortcode('user_registrations', 'rtc_ritregistratie_show_user_registrations');
 
