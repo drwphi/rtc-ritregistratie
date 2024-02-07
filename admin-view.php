@@ -4,8 +4,17 @@ if (!defined('ABSPATH')) {
 }
 
 function rtc_ritregistratie_admin_menu() {
-    add_menu_page('RTC Ritregistratie Admin', 'Ritregistraties', 'manage_options', 'rtc-ritregistratie-admin', 'rtc_ritregistratie_admin_page', 'dashicons-admin-site', 6);
+    add_menu_page(
+        'RTC Ritregistraties',    // Page title
+        'Ritregistraties',             // Menu title
+        'view_ritregistratie',         // Capability required to see this menu item
+        'rtc-ritregistratie-admin',    // Menu slug, used to refer to this menu in URL
+        'rtc_ritregistratie_admin_page', // Function that outputs the content for this page.
+        'dashicons-admin-site',        // Icon URL
+        6                              // Position where the menu should appear
+    );
 }
+
 
 add_action('admin_menu', 'rtc_ritregistratie_admin_menu');
 
