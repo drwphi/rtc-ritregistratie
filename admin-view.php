@@ -127,7 +127,19 @@ function rtc_ritregistratie_admin_page() {
     }
     $total = $wpdb->get_var($total_query);
 
-
+   // Pagination display
+   $total_pages = ceil($total / $per_page);
+   if ($total_pages > 1) {
+       $page_links = paginate_links(array(
+           'base' => add_query_arg('paged', '%#%'),
+           'format' => '',
+           'prev_text' => __('&laquo;'),
+           'next_text' => __('&raquo;'),
+           'total' => $total_pages,
+           'current' => $current_page
+       ));
+       echo '<div id="pagination" style="margin-top: 10px;">' . $page_links . '</div>';
+   }
 
     // Download CSV button
     echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
