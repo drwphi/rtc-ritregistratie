@@ -3,7 +3,7 @@
  * Plugin Name: RTC Ritregistratie
  * Plugin URI: https://strila.nl/wordpress-website-laten-maken-groningen/
  * Description: Ritregistratie voor leden van RTC Veluwerijders.
- * Version: 0.62
+ * Version: 0.7.0
  * Author: Daniel Philipsen
  * Author URI: https://strila.nl/
  */
@@ -112,7 +112,7 @@ function rtc_ritregistratie_show_user_registrations() {
         ], $_SERVER['REQUEST_URI']));
 
         $output .= sprintf(
-            '<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
+            '<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td><a href="%s" onclick="return confirm(\'Weet je zeker dat je deze rit wilt verwijderen?\');">Verwijderen</a></td></tr>',
             esc_html($formatted_date),
             esc_html($ride_type_label),
             esc_html($registration->ride_description),
@@ -126,7 +126,7 @@ function rtc_ritregistratie_show_user_registrations() {
     }
 
     // Add a row to display the total kilometers
-    $output .= "<tr><td colspan='3'>Totaal Kilometers</td><td>" . esc_html(number_format($total_kilometers, 2)) . "</td><td></td></tr>";
+    $output .= "<tr><td colspan='3'>Totaal Kilometers</td><td>" . esc_html(number_format($total_kilometers, 2)) . "</td><td></td><td></td></tr>";
     
     $output .= '</table>';
     $output .= '</div>';
