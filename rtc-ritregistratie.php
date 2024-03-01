@@ -94,13 +94,12 @@ function rtc_ritregistratie_show_user_registrations() {
         $formatted_duration = date('H:i', strtotime($registration->duration));
 
         $output .= sprintf(
-            '<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td><button class="remove-registration" data-id="%d">Verwijderen</button></td></tr>',
+            '<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
             esc_html($formatted_date),
             esc_html($ride_type_label),
             esc_html($registration->ride_description),
             esc_html($registration->kilometers),
             esc_html($formatted_duration)
-            esc_attr($registration->id) // Add this line to include the registration ID
         );
 
         // Add to total kilometers

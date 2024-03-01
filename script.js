@@ -30,27 +30,3 @@ jQuery(document).ready(function($) {
         });
     });
 });
-
-    // New removal functionality
-    $(document).on('click', '.remove-registration', function() {
-        var row = $(this).closest('tr');
-        var registrationId = $(this).data('id');
-        
-        $.ajax({
-            url: rtcRitregistratieAjax.ajax_url,
-            type: 'POST',
-            data: {
-                action: 'remove_registration',
-                registration_id: registrationId
-            },
-            success: function(response) {
-                if (response.success) {
-                    row.remove();
-                    // Optionally, update the total kilometers displayed
-                    // This part needs to be implemented based on your specific requirements
-                } else {
-                    alert('Could not remove the registration. Please try again.');
-                }
-            }
-        });
-    });
