@@ -4,11 +4,22 @@ if (!defined('ABSPATH')) exit; // Exit if accessed directly
 
 function rtc_ritregistratie_ajax_form_submission() {
     global $wpdb;
-    error_log('AJAX handler started');
+
+    // Verify nonce for CSRF protection
+    if (!isset($_POST['rtc_nonce']) || !wp_verify_nonce($_POST['rtc_nonce'], 'rtc_ritregistratie_submit_ride')) {
+        wp_send_json_error('Beveiligingscontrole mislukt. Vernieuw de pagina en probeer opnieuw.');
+        wp_die();
+    }
+
+    // Verify user is logged in
+    $user_id = get_current_user_id();
+    if ($user_id === 0) {
+        wp_send_json_error('Je moet ingelogd zijn om een rit te registreren.');
+        wp_die();
+    }
 
     // Check if the form is submitted
     if (isset($_POST['rtc_ritregistratie_submit'])) {
-        error_log('Form submission detected');
 
         // Sanitize and validate mandatory fields
         $ride_date = isset($_POST['ride_date']) ? sanitize_text_field($_POST['ride_date']) : null;
@@ -19,8 +30,6 @@ function rtc_ritregistratie_ajax_form_submission() {
         $ride = isset($_POST['ride']) ? sanitize_textarea_field($_POST['ride']) : '';
         $duration_hours = isset($_POST['duration_hours']) ? intval($_POST['duration_hours']) : 0;
         $duration_minutes = isset($_POST['duration_minutes']) ? intval($_POST['duration_minutes']) : 0;
-
-        error_log("Ride Date: $ride_date, Ride Type: $ride_type, Kilometers: $kilometers");
 
         // Check for empty mandatory fields
         $errors = array();
@@ -36,7 +45,7 @@ function rtc_ritregistratie_ajax_form_submission() {
             $inserted = $wpdb->insert(
                 $wpdb->prefix . 'rtc_ritregistratie',
                 array(
-                    'user_id' => get_current_user_id(),
+                    'user_id' => $user_id,
                     'ride_date' => $ride_date,
                     'ride_type' => $ride_type,
                     'ride_description' => $ride,
@@ -47,17 +56,13 @@ function rtc_ritregistratie_ajax_form_submission() {
             );
 
             if ($inserted === false) {
-                error_log('Database insertion failed: ' . $wpdb->last_error);
-                wp_send_json_error('Database insertion failed');
+                wp_send_json_error('Er is een fout opgetreden bij het opslaan.');
             } else {
-                wp_send_json_success('Gelukt! De rit is opgeslagen. Bekijk jouw ritten <a href="https://www.veluwerijders.nl/ritten-overzicht/">hier</a>.');
+                wp_send_json_success('Gelukt! De rit is opgeslagen.');
             }
         } else {
-            error_log('Validation errors: ' . json_encode($errors));
-            wp_send_json_error('Form validation errors');
+            wp_send_json_error('Niet alle verplichte velden zijn ingevuld.');
         }
-    } else {
-        error_log('Form not submitted or unrecognized submission');
     }
 
     wp_die();
@@ -65,4 +70,3 @@ function rtc_ritregistratie_ajax_form_submission() {
 
 
 add_action('wp_ajax_rtc_ritregistratie_handle_form', 'rtc_ritregistratie_ajax_form_submission');
-add_action('wp_ajax_nopriv_rtc_ritregistratie_handle_form', 'rtc_ritregistratie_ajax_form_submission');

@@ -10,22 +10,19 @@ jQuery(document).ready(function($) {
             type: 'POST',
             data: formData + '&action=rtc_ritregistratie_handle_form',
             success: function(response) {
+                var $msg = $('<p></p>');
                 if (response.success) {
-                    // Update the message container with the success message
-                    $('#form-message').html('<p style="color: green;">' + response.data + '</p>');
+                    $msg.css('color', 'green').text(response.data);
+                    $('#form-message').empty().append($msg);
+                    $('#rit-registratie')[0].reset();
                 } else {
-                    // Handle errors
-                    if (response.data && response.data.errors) {
-                        var errorMessages = Object.values(response.data.errors).join('<br>');
-                        $('#form-message').html('<p style="color: red;">Fouten: ' + errorMessages + '</p>');
-                    } else {
-                        $('#form-message').html('<p style="color: red;">Er is een onbekende fout opgetreden.</p>');
-                    }
+                    $msg.css('color', 'red').text(response.data || 'Er is een onbekende fout opgetreden.');
+                    $('#form-message').empty().append($msg);
                 }
             },
-            error: function(jqXHR, textStatus, errorThrown) {
-                // Handle AJAX errors
-                $('#form-message').html('<p style="color: red;">AJAX error: ' + textStatus + ', ' + errorThrown + '</p>');
+            error: function() {
+                var $msg = $('<p></p>').css('color', 'red').text('Er is een fout opgetreden bij het verzenden.');
+                $('#form-message').empty().append($msg);
             }
         });
     });
