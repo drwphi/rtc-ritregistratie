@@ -46,3 +46,13 @@ wp-config.php
 # Note: If you wish to whitelist themes,
 # uncomment the next line
 #/wp-content/themes
+
+# Claude Code local/machine settings — may hold permissions or local config.
+# Never commit these; the shared, secret-free config lives in .claude/settings.json.
+.claude/settings.local.json
+
+# Never commit secrets / credential material.
+*.env
+.env
+op-token*
+*service-account*token*
