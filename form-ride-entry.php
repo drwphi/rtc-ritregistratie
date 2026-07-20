@@ -3,6 +3,7 @@
 <?php if (!defined('ABSPATH')) exit; // Exit if accessed directly ?>
 
 <form id="rit-registratie" action="<?php echo esc_url($_SERVER['REQUEST_URI']); ?>" method="post">
+    <?php wp_nonce_field('rtc_ritregistratie_submit_ride', 'rtc_nonce'); ?>
     <div>
         <label for="ride_date">Datum:</label>
         <input type="date" id="ride_date" name="ride_date" placeholder="dd-mm-jjjj" required>

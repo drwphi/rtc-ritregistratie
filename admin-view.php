@@ -18,6 +18,10 @@ function rtc_ritregistratie_admin_menu() {
 add_action('admin_menu', 'rtc_ritregistratie_admin_menu');
 
 function rtc_ritregistratie_admin_page() {
+    if (!current_user_can('view_ritregistratie')) {
+        wp_die('Je hebt geen toegang tot deze pagina.');
+    }
+
     global $wpdb;
     $table_name = $wpdb->prefix . 'rtc_ritregistratie';
 
@@ -41,20 +45,28 @@ function rtc_ritregistratie_admin_page() {
     $current_page = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
     $offset = ($current_page - 1) * $per_page;
 
+    // Validate month_year_filter format (YYYY-MM)
+    $filter_year = null;
+    $filter_month = null;
+    if (!empty($month_year_filter) && preg_match('/^\d{4}-\d{2}$/', $month_year_filter)) {
+        $parts = explode('-', $month_year_filter);
+        $filter_year = intval($parts[0]);
+        $filter_month = intval($parts[1]);
+    }
+
     // SQL to fetch data with filters
     $sql = "SELECT * FROM $table_name";
-    if (!empty($month_year_filter)) {
-        [$year, $month] = explode('-', $month_year_filter);
-        $sql .= $wpdb->prepare(" WHERE YEAR(ride_date) = %d AND MONTH(ride_date) = %d", $year, $month);
+    if ($filter_year !== null && $filter_month !== null) {
+        $sql .= $wpdb->prepare(" WHERE YEAR(ride_date) = %d AND MONTH(ride_date) = %d", $filter_year, $filter_month);
     }
-    $sql .= " ORDER BY ride_date ASC"; // Add this line to sort by date ascending
-    $sql .= " LIMIT ${offset}, ${per_page}";
+    $sql .= " ORDER BY ride_date ASC";
+    $sql .= $wpdb->prepare(" LIMIT %d, %d", $offset, $per_page);
     $registrations = $wpdb->get_results($sql);
 
     // Total count for pagination
     $total_query = "SELECT COUNT(1) FROM $table_name";
-    if (!empty($month_year_filter)) {
-        $total_query .= $wpdb->prepare(" WHERE YEAR(ride_date) = %d AND MONTH(ride_date) = %d", $year, $month);
+    if ($filter_year !== null && $filter_month !== null) {
+        $total_query .= $wpdb->prepare(" WHERE YEAR(ride_date) = %d AND MONTH(ride_date) = %d", $filter_year, $filter_month);
     }
     $total = $wpdb->get_var($total_query);
 
@@ -106,27 +118,6 @@ function rtc_ritregistratie_admin_page() {
     
     echo '</tbody></table>';
 
-    // Pagination logic
-    $per_page = 100;
-    $current_page = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
-    $offset = ($current_page - 1) * $per_page;
-
-    // SQL to fetch data with filters
-    $sql = "SELECT * FROM $table_name";
-    if (!empty($month_year_filter)) {
-        [$year, $month] = explode('-', $month_year_filter);
-        $sql .= $wpdb->prepare(" WHERE YEAR(ride_date) = %d AND MONTH(ride_date) = %d", $year, $month);
-    }
-    $sql .= " LIMIT ${offset}, ${per_page}";
-    $registrations = $wpdb->get_results($sql);
-
-    // Total count for pagination
-    $total_query = "SELECT COUNT(1) FROM $table_name";
-    if (!empty($month_year_filter)) {
-        $total_query .= $wpdb->prepare(" WHERE YEAR(ride_date) = %d AND MONTH(ride_date) = %d", $year, $month);
-    }
-    $total = $wpdb->get_var($total_query);
-
    // Pagination display
    $total_pages = ceil($total / $per_page);
    if ($total_pages > 1) {
@@ -144,6 +135,7 @@ function rtc_ritregistratie_admin_page() {
     // Download CSV button
     echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
     echo '<input type="hidden" name="action" value="download_csv">';
+    wp_nonce_field('rtc_ritregistratie_download_csv', 'rtc_csv_nonce');
     if (!empty($month_year_filter)) {
         echo '<input type="hidden" name="month_year_filter" value="' . esc_attr($month_year_filter) . '">';
     }
@@ -164,18 +156,38 @@ function rtc_ritregistratie_get_pretty_ride_type($ride_type_key) {
     return isset($ride_type_mapping[$ride_type_key]) ? $ride_type_mapping[$ride_type_key] : $ride_type_key;
 }
 
+// Neutralize CSV/spreadsheet formula injection: prefix a single quote when a
+// cell value starts with a formula-trigger character (= + - @ tab CR), so that
+// spreadsheet apps treat user-supplied content as text instead of a formula.
+function rtc_ritregistratie_csv_safe($value) {
+    if (is_string($value) && $value !== '' && strpbrk($value[0], "=+-@\t\r") !== false) {
+        return "'" . $value;
+    }
+    return $value;
+}
+
 function rtc_ritregistratie_download_csv() {
+    // Verify nonce for CSRF protection
+    if (!isset($_POST['rtc_csv_nonce']) || !wp_verify_nonce($_POST['rtc_csv_nonce'], 'rtc_ritregistratie_download_csv')) {
+        wp_die('Beveiligingscontrole mislukt.');
+    }
+
+    // Verify user has the required capability
+    if (!current_user_can('view_ritregistratie')) {
+        wp_die('Je hebt geen toegang tot deze functie.');
+    }
+
     global $wpdb;
     $table_name = $wpdb->prefix . 'rtc_ritregistratie';
 
     // Check for month-year filter from the request and sanitize it
-    $month_year_filter = isset($_REQUEST['month_year_filter']) ? sanitize_text_field($_REQUEST['month_year_filter']) : '';
+    $month_year_filter = isset($_POST['month_year_filter']) ? sanitize_text_field($_POST['month_year_filter']) : '';
 
     // Start the query to select all entries
     $sql = "SELECT * FROM $table_name";
-    if (!empty($month_year_filter)) {
-        [$year, $month] = explode('-', $month_year_filter);
-        $sql .= $wpdb->prepare(" WHERE YEAR(ride_date) = %d AND MONTH(ride_date) = %d", $year, $month);
+    if (!empty($month_year_filter) && preg_match('/^\d{4}-\d{2}$/', $month_year_filter)) {
+        $parts = explode('-', $month_year_filter);
+        $sql .= $wpdb->prepare(" WHERE YEAR(ride_date) = %d AND MONTH(ride_date) = %d", intval($parts[0]), intval($parts[1]));
     }
     $registrations = $wpdb->get_results($sql, ARRAY_A);
 
@@ -209,6 +221,7 @@ function rtc_ritregistratie_download_csv() {
         $user_name = $user_info ? $user_info->first_name . ' ' . $user_info->last_name : 'Unknown User';
         array_splice($row, 1, 0, $user_name); // Insert 'user_name' after 'user_id'
         $row['ride_date'] = date('d-m-Y', strtotime($row['ride_date'])); // Format date for CSV
+        $row = array_map('rtc_ritregistratie_csv_safe', $row); // Neutralize formula injection
         fputcsv($output, $row);
     }
 
