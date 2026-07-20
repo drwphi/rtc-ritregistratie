@@ -156,6 +156,16 @@ function rtc_ritregistratie_get_pretty_ride_type($ride_type_key) {
     return isset($ride_type_mapping[$ride_type_key]) ? $ride_type_mapping[$ride_type_key] : $ride_type_key;
 }
 
+// Neutralize CSV/spreadsheet formula injection: prefix a single quote when a
+// cell value starts with a formula-trigger character (= + - @ tab CR), so that
+// spreadsheet apps treat user-supplied content as text instead of a formula.
+function rtc_ritregistratie_csv_safe($value) {
+    if (is_string($value) && $value !== '' && strpbrk($value[0], "=+-@\t\r") !== false) {
+        return "'" . $value;
+    }
+    return $value;
+}
+
 function rtc_ritregistratie_download_csv() {
     // Verify nonce for CSRF protection
     if (!isset($_POST['rtc_csv_nonce']) || !wp_verify_nonce($_POST['rtc_csv_nonce'], 'rtc_ritregistratie_download_csv')) {
@@ -211,6 +221,7 @@ function rtc_ritregistratie_download_csv() {
         $user_name = $user_info ? $user_info->first_name . ' ' . $user_info->last_name : 'Unknown User';
         array_splice($row, 1, 0, $user_name); // Insert 'user_name' after 'user_id'
         $row['ride_date'] = date('d-m-Y', strtotime($row['ride_date'])); // Format date for CSV
+        $row = array_map('rtc_ritregistratie_csv_safe', $row); // Neutralize formula injection
         fputcsv($output, $row);
     }
 
