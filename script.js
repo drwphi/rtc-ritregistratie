@@ -12,7 +12,13 @@ jQuery(document).ready(function($) {
             success: function(response) {
                 var $msg = $('<p></p>');
                 if (response.success) {
-                    $msg.css('color', 'green').text(response.data);
+                    // Server message via .text() (XSS-safe); the link is a fixed,
+                    // hardcoded element so no untrusted data is ever inserted as HTML.
+                    $msg.css('color', 'green').text(response.data + ' ');
+                    var $link = $('<a></a>')
+                        .attr('href', 'https://www.veluwerijders.nl/ritten-overzicht/')
+                        .text('Bekijk jouw ritten hier');
+                    $msg.append($link);
                     $('#form-message').empty().append($msg);
                     $('#rit-registratie')[0].reset();
                 } else {

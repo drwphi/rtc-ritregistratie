@@ -3,7 +3,7 @@
  * Plugin Name: RTC Ritregistratie
  * Plugin URI: https://strila.nl/wordpress-website-laten-maken-groningen/
  * Description: Ritregistratie voor leden van RTC Veluwerijders.
- * Version: 0.7.2
+ * Version: 0.7.3
  * Author: Daniel Philipsen
  * Author URI: https://strila.nl/
  */
